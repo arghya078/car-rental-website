@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply text-slate-800;
+  background: linear-gradient(
+    to bottom right,
+    theme('colors.indigo.50'),
+    theme('colors.sky.50'),
+    theme('colors.white')
+  );
+}
+
+a {
+  @apply text-indigo-600;
+}
