@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useState, useEffect } from "react";
@@ -42,15 +41,24 @@ export default function OwnerKyc() {
     for (const k of keys) {
       const v = k
         .split(".")
-        .reduce((acc, p) => (acc && acc[p] !== undefined ? acc[p] : null), user);
+        .reduce(
+          (acc, p) => (acc && acc[p] !== undefined ? acc[p] : null),
+          user
+        );
       if (v) return typeof v === "string" ? v : v?.url ?? null;
     }
     return null;
   };
 
-  const remoteOwnership = getRemote(["kyc.ownershipProof", "documents.ownershipProof"]);
+  const remoteOwnership = getRemote([
+    "kyc.ownershipProof",
+    "documents.ownershipProof",
+  ]);
   const remoteGov = getRemote(["documents.govId", "kyc.govId"]);
-  const remoteDl = getRemote(["documents.drivingLicense", "kyc.drivingLicense"]);
+  const remoteDl = getRemote([
+    "documents.drivingLicense",
+    "kyc.drivingLicense",
+  ]);
 
   const hasAnyRemoteDoc = Boolean(remoteOwnership || remoteGov || remoteDl);
   const hasAnyLocalFile = Boolean(ownershipFile || govFile || dlFile);
@@ -58,7 +66,9 @@ export default function OwnerKyc() {
 
   // normalize and compute status
   const rawStatus = (user?.kyc?.status || "").toLowerCase();
-  const kycStatus = (noDocsAtAll ? "not_submitted" : rawStatus || "not_submitted").toLowerCase();
+  const kycStatus = (
+    noDocsAtAll ? "not_submitted" : rawStatus || "not_submitted"
+  ).toLowerCase();
 
   // compute state
   const isPending = rawStatus === "pending" && hasAnyRemoteDoc;
@@ -67,15 +77,27 @@ export default function OwnerKyc() {
 
   const validFile = (f) => {
     if (!f) return false;
-    const allowed = ["image/jpeg", "image/png", "application/pdf", "image/jpg", "image/webp", "image/heic"];
+    const allowed = [
+      "image/jpeg",
+      "image/png",
+      "application/pdf",
+      "image/jpg",
+      "image/webp",
+      "image/heic",
+    ];
     return allowed.includes(f.type);
   };
 
-  const ownershipValid = ownershipFile ? validFile(ownershipFile) : Boolean(remoteOwnership);
+  const ownershipValid = ownershipFile
+    ? validFile(ownershipFile)
+    : Boolean(remoteOwnership);
   const govValid = govFile ? validFile(govFile) : Boolean(remoteGov);
   const dlValid = dlFile ? validFile(dlFile) : Boolean(remoteDl);
 
-  const allThreePresent = (ownershipFile || remoteOwnership) && (govFile || remoteGov) && (dlFile || remoteDl);
+  const allThreePresent =
+    (ownershipFile || remoteOwnership) &&
+    (govFile || remoteGov) &&
+    (dlFile || remoteDl);
   const allValid = ownershipValid && govValid && dlValid;
 
   const canSubmit = React.useMemo(() => {
@@ -86,10 +108,25 @@ export default function OwnerKyc() {
 
     // if rejected, allow re-upload of any corrected doc
     if (isRejected) {
-      return (ownershipFile && ownershipValid) || (govFile && govValid) || (dlFile && dlValid);
+      return (
+        (ownershipFile && ownershipValid) ||
+        (govFile && govValid) ||
+        (dlFile && dlValid)
+      );
     }
     return false;
-  }, [isApproved, isRejected, allThreePresent, allValid, ownershipFile, govFile, dlFile, ownershipValid, govValid, dlValid]);
+  }, [
+    isApproved,
+    isRejected,
+    allThreePresent,
+    allValid,
+    ownershipFile,
+    govFile,
+    dlFile,
+    ownershipValid,
+    govValid,
+    dlValid,
+  ]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -139,7 +176,10 @@ export default function OwnerKyc() {
     if (!fileOrUrl) return "-";
     if (typeof fileOrUrl === "string") {
       try {
-        return decodeURIComponent(new URL(fileOrUrl).pathname.split("/").pop()) || fileOrUrl;
+        return (
+          decodeURIComponent(new URL(fileOrUrl).pathname.split("/").pop()) ||
+          fileOrUrl
+        );
       } catch {
         return fileOrUrl;
       }
@@ -163,7 +203,8 @@ export default function OwnerKyc() {
   );
 
   // controls disabled only while submitting, or when KYC is under review or when approved
-  const controlsDisabled = isSubmittingLocal || kycSubmitting || isPending || isApproved;
+  const controlsDisabled =
+    isSubmittingLocal || kycSubmitting || isPending || isApproved;
 
   return (
     <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow">
@@ -172,42 +213,73 @@ export default function OwnerKyc() {
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="text-sm text-slate-600">KYC status:</div>
-          <div className="mt-1 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-700">
+          <div
+            className={`mt-1 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+      ${
+        isPending
+          ? "bg-yellow-100 text-yellow-700"
+          : isRejected
+          ? "bg-red-100 text-red-700"
+          : isApproved
+          ? "bg-green-100 text-green-700"
+          : "bg-slate-100 text-slate-700"
+      }`}
+          >
             {kycStatus ? kycStatus.toUpperCase() : "NOT SUBMITTED"}
           </div>
         </div>
 
-        <div className="text-sm text-slate-500">
-          {isPending && "Documents are under review. You cannot change documents while review is in progress."}
-          {isRejected && user?.kyc?.rejectionReason && "KYC rejected — see reason below and resubmit any corrected documents."}
-          {isApproved && "Account verified. Gov ID & Driving Licence can be updated from Profile later."}
+        <div
+          className={`text-sm ${
+            isPending
+              ? "text-yellow-600"
+              : isRejected
+              ? "text-red-600"
+              : isApproved
+              ? "text-green-600"
+              : "text-slate-500"
+          }`}
+        >
+          {isPending &&
+            "Documents are under review. You cannot change documents while review is in progress."}
+          {isRejected &&
+            user?.kyc?.rejectionReason &&
+            "KYC rejected — see reason below and resubmit any corrected documents."}
+          {isApproved &&
+            "Account verified. Gov ID & Driving Licence can be updated from Profile later."}
         </div>
       </div>
 
       {!isApproved && (
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[{
-              label: "Ownership proof",
-              file: ownershipFile,
-              remote: remoteOwnership,
-              setFile: setOwnershipFile,
-              valid: ownershipValid
-            }, {
-              label: "Government ID",
-              file: govFile,
-              remote: remoteGov,
-              setFile: setGovFile,
-              valid: govValid
-            }, {
-              label: "Driving Licence",
-              file: dlFile,
-              remote: remoteDl,
-              setFile: setDlFile,
-              valid: dlValid
-            }].map((doc, idx) => {
+            {[
+              {
+                label: "Ownership proof",
+                file: ownershipFile,
+                remote: remoteOwnership,
+                setFile: setOwnershipFile,
+                valid: ownershipValid,
+              },
+              {
+                label: "Government ID",
+                file: govFile,
+                remote: remoteGov,
+                setFile: setGovFile,
+                valid: govValid,
+              },
+              {
+                label: "Driving Licence",
+                file: dlFile,
+                remote: remoteDl,
+                setFile: setDlFile,
+                valid: dlValid,
+              },
+            ].map((doc, idx) => {
               // preview URL (file -> object URL, otherwise remote url)
-              const previewUrl = doc.file ? URL.createObjectURL(doc.file) : doc.remote;
+              const previewUrl = doc.file
+                ? URL.createObjectURL(doc.file)
+                : doc.remote;
               const canOpen = Boolean(previewUrl);
 
               return (
@@ -222,14 +294,19 @@ export default function OwnerKyc() {
                   <div className="flex items-center justify-between">
                     <div className="min-w-0">
                       <div className="text-sm text-slate-600">{doc.label}</div>
-                      <div className="text-xs text-slate-400 truncate max-w-[14rem]" title={getName(doc.file ? doc.file : doc.remote)}>
+                      <div
+                        className="text-xs text-slate-400 truncate max-w-[14rem]"
+                        title={getName(doc.file ? doc.file : doc.remote)}
+                      >
                         {getName(doc.file ? doc.file : doc.remote)}
                       </div>
                     </div>
                     <label
                       htmlFor={`fileInput-${idx}`}
                       className={`inline-flex items-center gap-2 px-2 py-1 rounded text-sm font-medium cursor-pointer ${
-                        controlsDisabled ? "bg-gray-100 text-slate-400 cursor-not-allowed" : "bg-indigo-50 text-indigo-700"
+                        controlsDisabled
+                          ? "bg-gray-100 text-slate-400 cursor-not-allowed"
+                          : "bg-indigo-50 text-indigo-700"
                       }`}
                     >
                       <UploadCloud className="w-4 h-4" />
@@ -262,7 +339,9 @@ export default function OwnerKyc() {
                   <div className="mt-3 flex items-center justify-between gap-2">
                     <button
                       type="button"
-                      onClick={() => canOpen && openViewer(previewUrl, doc.label)}
+                      onClick={() =>
+                        canOpen && openViewer(previewUrl, doc.label)
+                      }
                       className="inline-flex items-center gap-2 px-3 py-2 rounded-md border text-sm text-slate-700 hover:bg-gray-50"
                       disabled={!canOpen}
                     >
@@ -276,7 +355,9 @@ export default function OwnerKyc() {
           </div>
 
           <div className="flex items-center justify-between gap-4">
-            <div className="text-sm text-slate-500">Upload format: JPG, PNG, PDF. Max file size enforced by backend.</div>
+            <div className="text-sm text-slate-500">
+              Upload format: JPG, PNG, PDF. Max file size enforced by backend.
+            </div>
             <button
               type="submit"
               className={`px-4 py-2 rounded-md text-white ${
@@ -286,7 +367,12 @@ export default function OwnerKyc() {
                   ? "bg-indigo-600 hover:bg-indigo-700"
                   : "bg-gray-300 cursor-not-allowed"
               }`}
-              disabled={!canSubmit || isSubmittingLocal || kycSubmitting || controlsDisabled}
+              disabled={
+                !canSubmit ||
+                isSubmittingLocal ||
+                kycSubmitting ||
+                controlsDisabled
+              }
             >
               {isSubmittingLocal || kycSubmitting ? "Processing..." : "Submit"}
             </button>
@@ -299,17 +385,33 @@ export default function OwnerKyc() {
       <Modal isOpen={viewerOpen} onClose={closeViewer} title={viewerTitle}>
         <div className="max-w-3xl mx-auto">
           <div className="w-full h-[60vh]">
-            <DocumentViewer url={viewerUrl} alt={viewerTitle} imgClass="w-full h-full object-contain" />
+            <DocumentViewer
+              url={viewerUrl}
+              alt={viewerTitle}
+              imgClass="w-full h-full object-contain"
+            />
           </div>
         </div>
       </Modal>
 
-      <Modal isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)} title="Documents under verification">
+      <Modal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Documents under verification"
+      >
         <div className="space-y-3">
           <p>Your documents are under verification.</p>
-          <p className="text-sm text-slate-500">While pending, you cannot add cars, manage cars, or view bookings/earnings.</p>
+          <p className="text-sm text-slate-500">
+            While pending, you cannot add cars, manage cars, or view
+            bookings/earnings.
+          </p>
           <div className="flex justify-end gap-2">
-            <button onClick={() => setShowSuccessModal(false)} className="px-3 py-2 border rounded">OK</button>
+            <button
+              onClick={() => setShowSuccessModal(false)}
+              className="px-3 py-2 border rounded"
+            >
+              OK
+            </button>
           </div>
         </div>
       </Modal>

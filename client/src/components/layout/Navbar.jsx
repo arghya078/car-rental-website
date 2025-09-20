@@ -311,15 +311,6 @@ export default function Navbar() {
                   >
                     Sign In
                   </NavLink>
-
-                  {/* Mobile Sign Up */}
-                  <NavLink
-                    to="/signup"
-                    className="text-sm font-semibold px-4 py-2 rounded-full bg-gradient-to-r from-indigo-600 to-cyan-500 text-white shadow-md hover:shadow-lg transition-all w-max"
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    Sign Up
-                  </NavLink>
                 </>
               ) : (
                 <>

@@ -1,4 +1,4 @@
-// src/api/paymentApi.js
+
 import axios from "./axiosInstance";
 
 const withAuth = (token) => ({ headers: token ? { Authorization: `Bearer ${token}` } : {} });

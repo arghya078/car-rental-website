@@ -115,11 +115,11 @@ export default function Overview() {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35 }}
-      className="max-w-3xl mx-auto my-8 space-y-6"
+      className="max-w-3xl mx-auto my-8 space-y-6 px-4"
     >
-      {/* Top Card */}
-      <div className="bg-white p-6 rounded-xl shadow flex items-center gap-6">
-        <div className="flex-shrink-0">
+      {/* Top Card - responsive */}
+      <div className="bg-white p-4 sm:p-6 rounded-xl shadow flex flex-col sm:flex-row items-center sm:items-start gap-4">
+        <div className="flex-shrink-0 self-center sm:self-start">
           <img
             src={
               profilePic ||
@@ -128,7 +128,7 @@ export default function Overview() {
               )}&background=6366f1&color=fff&size=256`
             }
             alt={profile?.name || profile?.email || "User"}
-            className="w-28 h-28 rounded-full object-cover border"
+            className="w-20 h-20 sm:w-28 sm:h-28 rounded-full object-cover border"
             onError={(e) => {
               e.currentTarget.onerror = null;
               e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -138,30 +138,30 @@ export default function Overview() {
           />
         </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0 w-full">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-2xl font-semibold truncate">
+              <div className="text-xl sm:text-2xl font-semibold truncate">
                 {profile?.name || "Unnamed"}
               </div>
-              <div className="mt-1 flex items-center gap-4 text-sm text-slate-600">
-                <div className="flex items-center gap-1">
+              <div className="mt-1 flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-slate-600">
+                <div className="flex items-center gap-1 truncate">
                   <MailIcon size={14} className="text-slate-400" />
-                  <span className="truncate">{profile?.email}</span>
+                  <span className="truncate max-w-[220px]">{profile?.email}</span>
                 </div>
                 {profile?.phone && (
                   <div className="flex items-center gap-1">
                     <PhoneIcon size={14} className="text-slate-400" />
-                    <span>{profile.phone}</span>
+                    <span className="truncate">{profile.phone}</span>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="flex flex-col items-end gap-2">
+            <div className="flex-shrink-0 text-right">
               <div className="text-xs text-slate-400">Member since</div>
               {profile?.createdAt ? (
-                <div className="text-sm font-medium">
+                <div className="text-sm font-medium flex items-center justify-end">
                   <CalendarIcon size={14} className="inline mr-1" />
                   {new Date(profile.createdAt).toLocaleDateString()}
                 </div>
@@ -171,12 +171,12 @@ export default function Overview() {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
             <div className="flex items-center gap-2">
               <UserIcon size={16} className="text-slate-400" />
               <div>
                 <div className="text-xs text-slate-500">Role</div>
-                <div className="font-medium">{profile?.role || "user"}</div>
+                <div className="font-medium truncate">{profile?.role || "user"}</div>
               </div>
             </div>
 
@@ -184,9 +184,7 @@ export default function Overview() {
               <FileTextIcon size={16} className="text-slate-400" />
               <div>
                 <div className="text-xs text-slate-500">Documents</div>
-                <div className="font-medium">
-                  {dlUrl || govUrl ? "Uploaded" : "None"}
-                </div>
+                <div className="font-medium">{dlUrl || govUrl ? "Uploaded" : "None"}</div>
               </div>
             </div>
 
@@ -194,29 +192,27 @@ export default function Overview() {
               <MapPinIcon size={16} className="text-slate-400" />
               <div>
                 <div className="text-xs text-slate-500">Address</div>
-                <div className="font-medium">
-                  {profile?.address || "Not provided"}
-                </div>
+                <div className="font-medium truncate">{profile?.address || "Not provided"}</div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Documents Panel */}
+      {/* Documents Panel - responsive stacking with horizontal scroll on small screens */}
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.05 }}
-        className="bg-white p-6 rounded-xl shadow"
+        className="bg-white p-4 sm:p-6 rounded-xl shadow"
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium">Documents</h3>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-6">
+        <div className="flex flex-col md:flex-row gap-4">
           {/* Driving license */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="text-xs text-slate-500 mb-2 flex items-center gap-2">
               <FileTextIcon size={14} /> Driving license
             </div>
@@ -231,7 +227,7 @@ export default function Overview() {
                   <img
                     src={dlUrl}
                     alt="driving-license"
-                    className="w-full md:w-64 h-auto object-cover"
+                    className="w-full sm:w-64 max-h-48 object-contain"
                   />
                 </a>
                 <div className="flex items-center gap-2">
@@ -240,6 +236,7 @@ export default function Overview() {
                     href={dlUrl}
                     target="_blank"
                     rel="noreferrer"
+                    aria-label="View driving license"
                   >
                     <EyeIcon size={14} /> View
                   </a>
@@ -251,7 +248,7 @@ export default function Overview() {
           </div>
 
           {/* Government ID */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="text-xs text-slate-500 mb-2 flex items-center gap-2">
               <FileTextIcon size={14} /> Government ID
             </div>
@@ -266,7 +263,7 @@ export default function Overview() {
                   <img
                     src={govUrl}
                     alt="gov-id"
-                    className="w-full md:w-64 h-auto object-cover"
+                    className="w-full sm:w-64 max-h-48 object-contain"
                   />
                 </a>
                 <div className="flex items-center gap-2">
@@ -275,6 +272,7 @@ export default function Overview() {
                     href={govUrl}
                     target="_blank"
                     rel="noreferrer"
+                    aria-label="View government id"
                   >
                     <EyeIcon size={14} /> View
                   </a>
@@ -287,7 +285,7 @@ export default function Overview() {
 
           {/* Ownership proof (owner only) */}
           {role === "owner" && (
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className="text-xs text-slate-500 mb-2 flex items-center gap-2">
                 <FileTextIcon size={14} /> Ownership proof
               </div>
@@ -302,7 +300,7 @@ export default function Overview() {
                     <img
                       src={ownershipUrl}
                       alt="ownership-proof"
-                      className="w-full md:w-64 h-auto object-cover"
+                      className="w-full sm:w-64 max-h-48 object-contain"
                     />
                   </a>
                   <div className="flex items-center gap-2">
@@ -311,6 +309,7 @@ export default function Overview() {
                       href={ownershipUrl}
                       target="_blank"
                       rel="noreferrer"
+                      aria-label="View ownership proof"
                     >
                       <EyeIcon size={14} /> View
                     </a>
@@ -346,13 +345,13 @@ export default function Overview() {
         </motion.div>
       )}
 
-      {/* Delete button */}
+      {/* Delete button - full width on mobile */}
       <div className="pt-4 border-t flex justify-end">
         <motion.button
           whileTap={{ scale: 0.98 }}
           whileHover={{ scale: 1.02 }}
           onClick={handleDelete}
-          className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-rose-600 text-white rounded hover:bg-rose-700"
+          className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-rose-600 text-white rounded hover:bg-rose-700 w-full sm:w-auto justify-center"
           disabled={deleting}
           aria-disabled={deleting}
         >
