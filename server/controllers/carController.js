@@ -1,10 +1,11 @@
-
 const Car = require("../models/Car");
-const { uploadToCloudinary, removeFromCloudinary } = require("../utils/cloudinary");
-const fs = require("fs");
-const path = require("path");
+const {
+  uploadBufferToCloudinary,
+  removeFromCloudinary,
+} = require("../utils/cloudinary");
+
 // maximum images per car
-const MAX_IMAGES = 3; 
+const MAX_IMAGES = 3;
 
 // helper
 function safeParseJson(val) {
@@ -31,36 +32,50 @@ exports.addCar = async (req, res) => {
       rentalPricePerDay,
       pickupLocation,
       seatingCapacity,
-      description, 
+      description,
     } = req.body;
 
-    if (!brand || !model || !year || !type || !rentalPricePerDay || !pickupLocation || !seatingCapacity) {
-      return res.status(400).json({ message: "All required fields must be provided" });
+    if (
+      !brand ||
+      !model ||
+      !year ||
+      !type ||
+      !rentalPricePerDay ||
+      !pickupLocation ||
+      !seatingCapacity
+    ) {
+      return res
+        .status(400)
+        .json({ message: "All required fields must be provided" });
     }
-    const isAvailable = req.body.isAvailable !== undefined ? req.body.isAvailable === "true" : true;
+    const isAvailable =
+      req.body.isAvailable !== undefined
+        ? req.body.isAvailable === "true"
+        : true;
 
     // Upload images to Cloudinary
     const imageUrls = [];
-    const files = Array.isArray(req.files) ? req.files : (req.files?.images || Object.values(req.files || {}).flat());
+    const files = Array.isArray(req.files)
+      ? req.files
+      : req.files?.images || Object.values(req.files || {}).flat();
 
     if (files && files.length > 0) {
       for (const file of files) {
         try {
-          const uploaded = await uploadToCloudinary(file.path, "car-rental/cars");
+          const uploaded = await uploadBufferToCloudinary(
+            file.buffer,
+            "car-rental/cars"
+          );
           imageUrls.push({
             url: uploaded?.url ?? null,
             public_id: uploaded?.public_id ?? null,
           });
         } catch (err) {
           console.error("Failed to upload car image:", err?.message || err);
-          return res.status(500).json({ message: "Failed to upload one of the images", error: err?.message || err });
-        } finally {
-          // cleanup local file if used
-          try {
-            if (file.path && fs.existsSync(file.path)) fs.unlinkSync(file.path);
-          } catch (e) {
-            // ignore cleanup errors
-          }
+          return res.status(500).json({
+            message: "Failed to upload one of the images",
+            error: err?.message || err,
+          });
         }
       }
     }
@@ -84,23 +99,28 @@ exports.addCar = async (req, res) => {
     res.status(201).json({ message: "Car added successfully", car: newCar });
   } catch (err) {
     console.error("addCar error:", err?.message || err);
-    res.status(500).json({ message: "Server error", error: err?.message || err });
+    res
+      .status(500)
+      .json({ message: "Server error", error: err?.message || err });
   }
 };
 
-// Update car (Owner or Admin) 
+// Update car (Owner or Admin)
 exports.updateCar = async (req, res) => {
   try {
     const car = await Car.findById(req.params.id);
     if (!car) return res.status(404).json({ message: "Car not found" });
 
     // ownership or admin role
-    if (car.owner.toString() !== req.user._id.toString() && req.user.role !== "admin") {
+    if (
+      car.owner.toString() !== req.user._id.toString() &&
+      req.user.role !== "admin"
+    ) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    const removedImages = safeParseJson(req.body.removedImages); 
-     // updated fields
+    const removedImages = safeParseJson(req.body.removedImages);
+    // updated fields
     const fields = [
       "brand",
       "model",
@@ -152,7 +172,12 @@ exports.updateCar = async (req, res) => {
 
     // Delete matched images from Cloudinary
     for (const item of imagesToDelete) {
-      const arg = item.publicId || item.public_id || item.url || (item.img && (item.img.public_id ?? item.img.url)) || null;
+      const arg =
+        item.publicId ||
+        item.public_id ||
+        item.url ||
+        (item.img && (item.img.public_id ?? item.img.url)) ||
+        null;
       if (!arg) continue;
       try {
         await removeFromCloudinary(arg);
@@ -166,43 +191,52 @@ exports.updateCar = async (req, res) => {
 
     // add new images
     const allowedNew = Math.max(0, MAX_IMAGES - car.images.length);
-    const files = Array.isArray(req.files) ? req.files : (req.files?.images || Object.values(req.files || {}).flat());
+    const files = Array.isArray(req.files)
+      ? req.files
+      : req.files?.images || Object.values(req.files || {}).flat();
     const incomingFiles = Array.isArray(files) ? files : [];
 
     let filesToProcess = incomingFiles.slice(0, allowedNew);
     if (incomingFiles.length > allowedNew) {
-      warnings.push(`Only ${allowedNew} of ${incomingFiles.length} uploaded files were accepted (max total images ${MAX_IMAGES}).`);
-      
+      warnings.push(
+        `Only ${allowedNew} of ${incomingFiles.length} uploaded files were accepted (max total images ${MAX_IMAGES}).`
+      );
     }
 
     for (const file of filesToProcess) {
       try {
-        const uploaded = await uploadToCloudinary(file.path, "car-rental/cars");
+        const uploaded = await uploadBufferToCloudinary(
+          file.buffer,
+          "car-rental/cars"
+        );
         car.images.push({
           url: uploaded?.url ?? null,
           public_id: uploaded?.public_id ?? null,
         });
       } catch (err) {
-        warnings.push(`Failed to upload file ${file?.originalname || file?.filename || "unknown"}: ${err?.message || err}`);
+        warnings.push(
+          `Failed to upload file ${
+            file?.originalname || file?.filename || "unknown"
+          }: ${err?.message || err}`
+        );
         console.error("Failed to upload new car image:", err?.message || err);
-      } finally {
-        try {
-          if (file.path && fs.existsSync(file.path)) fs.unlinkSync(file.path);
-        } catch (e) {
-          // ignore 
-        }
       }
     }
 
     await car.save();
 
-    const responsePayload = { message: "Car updated successfully", car };
+    const responsePayload = {
+      message: "Car updated successfully",
+      car,
+    };
     if (warnings.length) responsePayload.warnings = warnings;
 
     res.json(responsePayload);
   } catch (err) {
     console.error("updateCar error:", err?.message || err);
-    res.status(500).json({ message: "Server error", error: err?.message || err });
+    res
+      .status(500)
+      .json({ message: "Server error", error: err?.message || err });
   }
 };
 
@@ -213,11 +247,14 @@ exports.deleteCar = async (req, res) => {
     if (!car) return res.status(404).json({ message: "Car not found" });
 
     // Check ownership or admin role
-    if (car.owner.toString() !== req.user._id.toString() && req.user.role !== "admin") {
+    if (
+      car.owner.toString() !== req.user._id.toString() &&
+      req.user.role !== "admin"
+    ) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    // Delete images from Cloudinary 
+    // Delete images from Cloudinary
     if (Array.isArray(car.images)) {
       for (const img of car.images) {
         try {
@@ -225,8 +262,10 @@ exports.deleteCar = async (req, res) => {
             await removeFromCloudinary(img.public_id ?? img.url);
           }
         } catch (err) {
-          console.warn("Failed to remove car image from Cloudinary:", err?.message || err);
-          
+          console.warn(
+            "Failed to remove car image from Cloudinary:",
+            err?.message || err
+          );
         }
       }
     }
@@ -235,7 +274,9 @@ exports.deleteCar = async (req, res) => {
     res.json({ message: "Car deleted successfully" });
   } catch (err) {
     console.error("deleteCar error:", err?.message || err);
-    res.status(500).json({ message: "Server error", error: err?.message || err });
+    res
+      .status(500)
+      .json({ message: "Server error", error: err?.message || err });
   }
 };
 
@@ -282,7 +323,9 @@ exports.getCarsForCustomers = async (req, res) => {
     res.json(cars);
   } catch (err) {
     console.error("getCarsForCustomers error:", err?.message || err);
-    res.status(500).json({ message: "Server error", error: err?.message || err });
+    res
+      .status(500)
+      .json({ message: "Server error", error: err?.message || err });
   }
 };
 
@@ -293,7 +336,9 @@ exports.getCarsForOwner = async (req, res) => {
     res.json(cars);
   } catch (err) {
     console.error("getCarsForOwner error:", err?.message || err);
-    res.status(500).json({ message: "Server error", error: err?.message || err });
+    res
+      .status(500)
+      .json({ message: "Server error", error: err?.message || err });
   }
 };
 
@@ -332,7 +377,9 @@ exports.getCarsForAdmin = async (req, res) => {
     res.json(cars);
   } catch (err) {
     console.error("getCarsForAdmin error:", err?.message || err);
-    res.status(500).json({ message: "Server error", error: err?.message || err });
+    res
+      .status(500)
+      .json({ message: "Server error", error: err?.message || err });
   }
 };
 
@@ -340,12 +387,17 @@ exports.getCarsForAdmin = async (req, res) => {
 exports.getCarById = async (req, res) => {
   try {
     // Populate owner with phone and address (and profilePic)
-    const car = await Car.findById(req.params.id).populate("owner", "name email phone address profilePic");
+    const car = await Car.findById(req.params.id).populate(
+      "owner",
+      "name email phone address profilePic"
+    );
     if (!car) return res.status(404).json({ message: "Car not found" });
     res.json(car);
   } catch (err) {
     console.error("getCarById error:", err?.message || err);
-    res.status(500).json({ message: "Server error", error: err?.message || err });
+    res
+      .status(500)
+      .json({ message: "Server error", error: err?.message || err });
   }
 };
 
@@ -354,20 +406,17 @@ exports.searchCars = async (req, res) => {
   try {
     let filter = { isAvailable: true };
 
-    // free-text query 'q' -> search across multiple fields (brand, model, type, owner name)
+    // free-text query 'q'
     if (req.query.q && String(req.query.q).trim()) {
       const term = escapeRegex(String(req.query.q).trim());
       const re = new RegExp(term, "i");
-      filter.$or = [
-        { brand: re },
-        { model: re },
-        { type: re },
-        // owner name is in referenced user collection; perform a lookup-based query later if needed
-      ];
+      filter.$or = [{ brand: re }, { model: re }, { type: re }];
     } else {
-      // legacy per-field filters (kept for backward compatibility)
       if (req.query.location) {
-        filter.pickupLocation = { $regex: req.query.location, $options: "i" };
+        filter.pickupLocation = {
+          $regex: req.query.location,
+          $options: "i",
+        };
       }
       if (req.query.brand) {
         filter.brand = { $regex: req.query.brand, $options: "i" };
@@ -376,18 +425,15 @@ exports.searchCars = async (req, res) => {
         filter.model = { $regex: req.query.model, $options: "i" };
       }
       if (req.query.type) {
-        // allow partial/type-insensitive match too
         filter.type = { $regex: req.query.type, $options: "i" };
       }
     }
 
-    // seatingCapacity 
     if (req.query.seatingCapacity) {
       const sc = Number(req.query.seatingCapacity);
       if (!Number.isNaN(sc)) filter.seatingCapacity = sc;
     }
 
-    // price range
     if (req.query.minPrice || req.query.maxPrice) {
       filter.rentalPricePerDay = {};
       if (req.query.minPrice) {
@@ -398,11 +444,10 @@ exports.searchCars = async (req, res) => {
         const mx = Number(req.query.maxPrice);
         if (!Number.isNaN(mx)) filter.rentalPricePerDay.$lte = mx;
       }
-      
-      if (Object.keys(filter.rentalPricePerDay).length === 0) delete filter.rentalPricePerDay;
+      if (Object.keys(filter.rentalPricePerDay).length === 0)
+        delete filter.rentalPricePerDay;
     }
 
-    // Sorting
     let sort = {};
     if (req.query.sortBy) {
       const order = req.query.order === "desc" ? -1 : 1;
@@ -417,10 +462,12 @@ exports.searchCars = async (req, res) => {
       const term = escapeRegex(String(req.query.q).trim());
       const re = new RegExp(term, "i");
 
-      const matchedUsers = await require("../models/User").find({ name: re }).select("_id").limit(200);
+      const matchedUsers = await require("../models/User")
+        .find({ name: re })
+        .select("_id")
+        .limit(200);
       const ownerIds = matchedUsers.map((u) => u._id);
 
-      // if ownerIds found
       if (ownerIds.length) {
         filter.$or.push({ owner: { $in: ownerIds } });
       }
@@ -437,7 +484,6 @@ exports.searchCars = async (req, res) => {
       });
     }
 
-    // Default 
     const cars = await Car.find(filter).sort(sort).skip(skip).limit(limit);
     const total = await Car.countDocuments(filter);
 
@@ -450,6 +496,8 @@ exports.searchCars = async (req, res) => {
     });
   } catch (err) {
     console.error("searchCars error:", err?.message || err);
-    res.status(500).json({ message: "Server error", error: err?.message || err });
+    res
+      .status(500)
+      .json({ message: "Server error", error: err?.message || err });
   }
 };

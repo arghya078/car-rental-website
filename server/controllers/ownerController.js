@@ -1,14 +1,15 @@
-// server/controllers/ownerController.js
-const fs = require("fs");
 const User = require("../models/User");
-const { uploadToCloudinary, removeFromCloudinary } = require("../utils/cloudinary");
+const {
+  uploadBufferToCloudinary,
+  removeFromCloudinary,
+} = require("../utils/cloudinary");
 
 async function uploadAndReplace(multerFile, oldFileRecord, folder = "car-rental/kyc") {
-  if (!multerFile || !multerFile.path) {
-    throw new Error("No file to upload");
+  if (!multerFile || !multerFile.buffer) {
+    throw new Error("No file buffer to upload");
   }
 
-  // remove old file by public id or url 
+  // remove old file by public id or url
   try {
     const oldPublicId = oldFileRecord?.public_id ?? oldFileRecord?.publicId ?? null;
     const oldUrl = oldFileRecord?.url ?? null;
@@ -22,11 +23,11 @@ async function uploadAndReplace(multerFile, oldFileRecord, folder = "car-rental/
       });
     }
   } catch (err) {
-    console.warn("Failed to remove old cloudinary file:", err && err.message ? err.message : err);
+    console.warn("Failed to remove old cloudinary file:", err?.message || err);
   }
 
-  // upload new file
-  const result = await uploadToCloudinary(multerFile.path, folder);
+  // upload new file from buffer
+  const result = await uploadBufferToCloudinary(multerFile.buffer, folder);
   return { url: result?.url ?? null, public_id: result?.public_id ?? null };
 }
 
@@ -43,11 +44,14 @@ exports.submitKyc = async (req, res) => {
     // Gov ID
     if (files["govId"] && files["govId"][0]) {
       try {
-        const newRec = await uploadAndReplace(files["govId"][0], user.documents?.govId, "car-rental/kyc/gov-ids");
+        const newRec = await uploadAndReplace(
+          files["govId"][0],
+          user.documents?.govId,
+          "car-rental/kyc/gov-ids"
+        );
         user.documents.govId = newRec;
       } catch (e) {
-        console.warn("govId upload/replace failed:", e && e.message ? e.message : e);
-        
+        console.warn("govId upload/replace failed:", e?.message || e);
       }
     }
 
@@ -61,7 +65,7 @@ exports.submitKyc = async (req, res) => {
         );
         user.documents.drivingLicense = newRec;
       } catch (e) {
-        console.warn("drivingLicense upload/replace failed:", e && e.message ? e.message : e);
+        console.warn("drivingLicense upload/replace failed:", e?.message || e);
       }
     }
 
@@ -78,11 +82,11 @@ exports.submitKyc = async (req, res) => {
         );
         user.kyc.ownershipProof = newRec;
 
-        // set/reset kyc status 
+        // set/reset kyc status
         user.kyc.status = user.kyc?.status === "approved" ? "approved" : "pending";
         if (user.kyc.status === "pending") user.kyc.rejectionReason = undefined;
       } catch (e) {
-        console.warn("ownershipProof upload/replace failed:", e && e.message ? e.message : e);
+        console.warn("ownershipProof upload/replace failed:", e?.message || e);
       }
     }
 
@@ -98,7 +102,7 @@ exports.submitKyc = async (req, res) => {
       user,
     });
   } catch (error) {
-    console.error("submitKyc error:", error && error.message ? error.message : error);
+    console.error("submitKyc error:", error?.message || error);
     res.status(500).json({ message: error?.message || "Server error" });
   }
 };

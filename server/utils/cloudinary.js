@@ -1,6 +1,7 @@
 // utils/cloudinary.js
 const cloudinaryLib = require("cloudinary").v2;
 const fs = require("fs");
+const streamifier = require("streamifier");
 
 const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
 
@@ -24,10 +25,11 @@ function normalizeUploadResult(res) {
   return { url, secure_url, public_id, raw: res };
 }
 
+// ---------- File Path Upload (disk-based, local dev) ----------
 async function _doUpload(filePath, opts = {}) {
   const res = await cloudinaryLib.uploader.upload(filePath, opts);
 
-  // ALWAYS remove local file after successful upload (if it exists)
+  // Remove local file after successful upload
   try {
     if (filePath && fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
@@ -39,7 +41,6 @@ async function _doUpload(filePath, opts = {}) {
   return normalizeUploadResult(res);
 }
 
-// Upload a file to Cloudinary
 async function uploadToCloudinary(filePath, optionsOrFolder = {}) {
   if (!cloudinaryLib?.uploader?.upload) {
     throw new Error("Cloudinary uploader is not configured.");
@@ -57,7 +58,7 @@ async function uploadToCloudinary(filePath, optionsOrFolder = {}) {
     return await _doUpload(filePath, opts);
   } catch (err) {
     const msg = String(err?.message || err).toLowerCase();
-    if (msg.includes("invalid transformation component") || msg.includes("invalid transformation")) {
+    if (msg.includes("invalid transformation")) {
       console.warn("Cloudinary upload: invalid transformation — retrying without transformation.");
       delete opts.transformation;
       try {
@@ -74,7 +75,31 @@ async function uploadToCloudinary(filePath, optionsOrFolder = {}) {
   }
 }
 
-// Remove a file from Cloudinary
+// ---------- Buffer Upload (memory-based, Vercel safe) ----------
+async function uploadBufferToCloudinary(buffer, optionsOrFolder = {}) {
+  if (!cloudinaryLib?.uploader?.upload_stream) {
+    throw new Error("Cloudinary uploader is not configured.");
+  }
+  if (!buffer) throw new Error("uploadBufferToCloudinary: buffer is required");
+
+  let opts = {};
+  if (typeof optionsOrFolder === "string") {
+    opts = { folder: optionsOrFolder };
+  } else if (typeof optionsOrFolder === "object" && optionsOrFolder !== null) {
+    opts = { ...optionsOrFolder };
+  }
+
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinaryLib.uploader.upload_stream(opts, (err, result) => {
+      if (err) return reject(err);
+      resolve(normalizeUploadResult(result));
+    });
+
+    streamifier.createReadStream(buffer).pipe(uploadStream);
+  });
+}
+
+// ---------- Remove from Cloudinary ----------
 async function removeFromCloudinary(publicIdOrUrlOrDoc) {
   if (!publicIdOrUrlOrDoc) return null;
 
@@ -96,7 +121,10 @@ async function removeFromCloudinary(publicIdOrUrlOrDoc) {
   } else if (typeof publicIdOrUrlOrDoc === "object") {
     publicId = publicIdOrUrlOrDoc?.public_id ?? publicIdOrUrlOrDoc?.id ?? null;
     if (!publicId) {
-      const candidate = publicIdOrUrlOrDoc?.url ?? publicIdOrUrlOrDoc?.secure_url ?? publicIdOrUrlOrDoc?.raw?.url;
+      const candidate =
+        publicIdOrUrlOrDoc?.url ??
+        publicIdOrUrlOrDoc?.secure_url ??
+        publicIdOrUrlOrDoc?.raw?.url;
       if (candidate) {
         try {
           const parts = String(candidate).split("/").filter(Boolean);
@@ -128,8 +156,10 @@ async function removeFromCloudinary(publicIdOrUrlOrDoc) {
   }
 }
 
+// ---------- Exports ----------
 module.exports = {
   cloudinary: cloudinaryLib,
-  uploadToCloudinary,
+  uploadToCloudinary,       // path-based (local dev)
+  uploadBufferToCloudinary, // buffer-based (Vercel safe)
   removeFromCloudinary,
 };

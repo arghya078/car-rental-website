@@ -1,25 +1,8 @@
-// server/middleware/uploadMiddleware.js
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
 
-const uploadPath = path.join(__dirname, "..", "uploads");
-
-// Create uploads folder
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath, { recursive: true });
-}
-
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const safeName = file.originalname.replace(/\s+/g, "_");
-    cb(null, `${Date.now()}-${safeName}`);
-  },
-});
+// Use memory storage (keeps files in RAM, not disk)
+const storage = multer.memoryStorage();
 
 // File filter
 const fileFilter = (req, file, cb) => {
@@ -38,8 +21,8 @@ const fileFilter = (req, file, cb) => {
 
 // Configure multer
 const upload = multer({
-  storage,
-  limits: { fileSize: 2 * 1024 * 1024 }, 
+  storage, // memory storage
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
   fileFilter,
 });
 

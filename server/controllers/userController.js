@@ -1,6 +1,8 @@
-
 const User = require("../models/User");
-const { uploadToCloudinary, removeFromCloudinary } = require("../utils/cloudinary");
+const {
+  uploadBufferToCloudinary,
+  removeFromCloudinary,
+} = require("../utils/cloudinary");
 const { updateProfileValidation } = require("../validations/userValidation");
 
 // Get Profile
@@ -35,56 +37,83 @@ const updateProfile = async (req, res, next) => {
     if (address) user.address = address;
     if (phone) user.phone = phone;
 
-    
     user.documents = user.documents || {};
 
-    
+    // Profile Pic
     if (req.files?.profilePic?.length) {
       const file = req.files.profilePic[0];
-      const result = await uploadToCloudinary(file.path, "car-rental/profile-pics");
+      const result = await uploadBufferToCloudinary(
+        file.buffer,
+        "car-rental/profile-pics"
+      );
 
       // delete previous
       if (user.profilePic?.public_id || user.profilePic?.url) {
         try {
-          await removeFromCloudinary(user.profilePic.public_id ?? user.profilePic.url);
+          await removeFromCloudinary(
+            user.profilePic.public_id ?? user.profilePic.url
+          );
         } catch (e) {
           console.warn("Failed to delete old profilePic:", e?.message || e);
         }
       }
 
-      user.profilePic = { url: result?.url ?? null, public_id: result?.public_id ?? null };
+      user.profilePic = {
+        url: result?.url ?? null,
+        public_id: result?.public_id ?? null,
+      };
     }
 
-    // drivingLicense
+    // Driving License
     if (req.files?.drivingLicense?.length) {
       const file = req.files.drivingLicense[0];
-      const result = await uploadToCloudinary(file.path, "car-rental/driving-licenses");
+      const result = await uploadBufferToCloudinary(
+        file.buffer,
+        "car-rental/driving-licenses"
+      );
 
-      if (user.documents?.drivingLicense?.public_id || user.documents?.drivingLicense?.url) {
+      if (
+        user.documents?.drivingLicense?.public_id ||
+        user.documents?.drivingLicense?.url
+      ) {
         try {
-          await removeFromCloudinary(user.documents.drivingLicense.public_id ?? user.documents.drivingLicense.url);
+          await removeFromCloudinary(
+            user.documents.drivingLicense.public_id ??
+              user.documents.drivingLicense.url
+          );
         } catch (e) {
           console.warn("Failed to delete old drivingLicense:", e?.message || e);
         }
       }
 
-      user.documents.drivingLicense = { url: result?.url ?? null, public_id: result?.public_id ?? null };
+      user.documents.drivingLicense = {
+        url: result?.url ?? null,
+        public_id: result?.public_id ?? null,
+      };
     }
 
-    // govId
+    // Gov ID
     if (req.files?.govId?.length) {
       const file = req.files.govId[0];
-      const result = await uploadToCloudinary(file.path, "car-rental/gov-ids");
+      const result = await uploadBufferToCloudinary(
+        file.buffer,
+        "car-rental/gov-ids"
+      );
 
       if (user.documents?.govId?.public_id || user.documents?.govId?.url) {
         try {
-          await removeFromCloudinary(user.documents.govId.public_id ?? user.documents.govId.url);
+          await removeFromCloudinary(
+            user.documents.govId.public_id ?? user.documents.govId.url
+          );
         } catch (e) {
           console.warn("Failed to delete old govId:", e?.message || e);
         }
       }
 
-      user.documents.govId = { url: result?.url ?? null, public_id: result?.public_id ?? null };
+      user.documents.govId = {
+        url: result?.url ?? null,
+        public_id: result?.public_id ?? null,
+      };
     }
 
     await user.save();
@@ -107,15 +136,23 @@ const deleteProfile = async (req, res, next) => {
     // delete cloudinary files
     try {
       if (user.profilePic?.public_id || user.profilePic?.url) {
-        await removeFromCloudinary(user.profilePic.public_id ?? user.profilePic.url);
+        await removeFromCloudinary(
+          user.profilePic.public_id ?? user.profilePic.url
+        );
       }
     } catch (e) {
       console.warn("Error removing profilePic:", e?.message || e);
     }
 
     try {
-      if (user.documents?.drivingLicense?.public_id || user.documents?.drivingLicense?.url) {
-        await removeFromCloudinary(user.documents.drivingLicense.public_id ?? user.documents.drivingLicense.url);
+      if (
+        user.documents?.drivingLicense?.public_id ||
+        user.documents?.drivingLicense?.url
+      ) {
+        await removeFromCloudinary(
+          user.documents.drivingLicense.public_id ??
+            user.documents.drivingLicense.url
+        );
       }
     } catch (e) {
       console.warn("Error removing drivingLicense:", e?.message || e);
@@ -123,15 +160,22 @@ const deleteProfile = async (req, res, next) => {
 
     try {
       if (user.documents?.govId?.public_id || user.documents?.govId?.url) {
-        await removeFromCloudinary(user.documents.govId.public_id ?? user.documents.govId.url);
+        await removeFromCloudinary(
+          user.documents.govId.public_id ?? user.documents.govId.url
+        );
       }
     } catch (e) {
       console.warn("Error removing govId:", e?.message || e);
     }
 
     try {
-      if (user.kyc?.ownershipProof?.public_id || user.kyc?.ownershipProof?.url) {
-        await removeFromCloudinary(user.kyc.ownershipProof.public_id ?? user.kyc.ownershipProof.url);
+      if (
+        user.kyc?.ownershipProof?.public_id ||
+        user.kyc?.ownershipProof?.url
+      ) {
+        await removeFromCloudinary(
+          user.kyc.ownershipProof.public_id ?? user.kyc.ownershipProof.url
+        );
       }
     } catch (e) {
       console.warn("Error removing ownershipProof:", e?.message || e);
