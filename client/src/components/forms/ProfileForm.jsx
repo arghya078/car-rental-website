@@ -446,7 +446,7 @@ export default function ProfileForm({
                   }
                   setLocalMsg(null);
                 }}
-                className="px-6 py-2 rounded text-sm bg-red-600 text-white hover:bg-red-700"
+                className="px-5 py-3 rounded text-sm bg-red-600 text-white hover:bg-red-700"
                 disabled={picSubmitting}
               >
                 Reset

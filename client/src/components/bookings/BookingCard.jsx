@@ -1,7 +1,8 @@
 // src/components/bookings/BookingCard.jsx
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle, XCircle, AlertCircle, Clock, FileText } from "lucide-react";
+import { CheckCircle, XCircle, Clock, FileText } from "lucide-react";
+import Modal from "../ui/Modal"; // make sure path is correct relative to this file
 
 export default function BookingCard({
   booking = {},
@@ -14,7 +15,11 @@ export default function BookingCard({
   payingId = null,
   respondingId = null,
 }) {
-  
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelSuccess, setCancelSuccess] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
+
   const car = useMemo(() => booking?.car ?? {}, [booking?.car]);
   const customer = useMemo(() => booking?.customer ?? {}, [booking?.customer]);
   const owner = useMemo(() => booking?.owner ?? {}, [booking?.owner]);
@@ -74,7 +79,7 @@ export default function BookingCard({
     return "pending";
   };
 
-  const bookingPaymentCanon = useMemo(() => {
+  const bookingPaymentCanon = (() => {
     try {
       const extractRawStatus = (p) => {
         if (!p) return null;
@@ -100,7 +105,7 @@ export default function BookingCard({
     } catch {
       return "pending";
     }
-  }, [booking]);
+  })();
 
   const safeStatus = booking?.status ?? "—";
   const canonBookingStatus = String(safeStatus).toLowerCase();
@@ -155,164 +160,247 @@ export default function BookingCard({
     );
   }
 
-  // render
+  // async cancel handler used by modal's "Yes" button
+  const handleConfirmCancel = async () => {
+    setCancelError(null);
+    setCancelling(true);
+    setCancelSuccess(false);
+
+    try {
+      // support sync or async onCancel prop
+      await Promise.resolve(onCancel?.(booking?._id));
+      setCancelSuccess(true);
+
+      // auto-close modal after short delay so user sees success
+      window.setTimeout(() => {
+        setConfirmCancelOpen(false);
+        setCancelSuccess(false);
+      }, 1200);
+    } catch (err) {
+      console.error("Cancel failed:", err);
+      setCancelError(err?.message || "Failed to cancel booking. Please try again.");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   return (
-    <div
-      className={`${cardBg} rounded-xl shadow-sm border p-4 flex flex-col md:grid md:grid-cols-3 gap-4 transition`}
-    >
-      {/* Left: image */}
-      <div className="flex items-center md:items-start">
-        <div className="w-32 h-20 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0 shadow-sm">
-          <img
-            src={image}
-            alt={`${car?.brand ?? ""} ${car?.model ?? ""}`.trim()}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              if (e?.currentTarget) {
-                e.currentTarget.onerror = null;
-                e.currentTarget.src = "/placeholder-car.png";
-              }
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Middle: details */}
-      <div className="md:col-span-1 flex flex-col justify-between min-w-0">
-        <div>
-          <div className="text-lg font-semibold truncate">
-            {(car?.brand ? `${car.brand} ` : "") +
-              (car?.model || car?.title || "")}
-          </div>
-          <div className="text-sm text-slate-500 mt-1 truncate">
-            {car?.pickupLocation ? `${car.pickupLocation} • ` : ""}
-            {car?.rentalPricePerDay
-              ? `${formatCurrencyValue(car.rentalPricePerDay)}/day`
-              : ""}
-          </div>
-
-          <div className="mt-3 text-sm text-slate-700 space-y-1">
-            <div>
-              Dates:{" "}
-              <span className="font-medium">
-                {formatDate(booking?.startDate)} —{" "}
-                {formatDate(booking?.endDate)}
-              </span>
-            </div>
-            <div>
-              Total:{" "}
-              <span className="font-medium">
-                {booking?.totalPrice
-                  ? formatCurrencyValue(booking.totalPrice)
-                  : "-"}
-              </span>
-            </div>
+    <>
+      <div
+        className={`${cardBg} rounded-xl shadow-sm border p-4 flex flex-col md:grid md:grid-cols-3 gap-4 transition`}
+      >
+        {/* Left: image */}
+        <div className="flex items-center md:items-start">
+          <div className="w-32 h-20 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0 shadow-sm">
+            <img
+              src={image}
+              alt={`${car?.brand ?? ""} ${car?.model ?? ""}`.trim()}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                if (e?.currentTarget) {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = "/placeholder-car.png";
+                }
+              }}
+            />
           </div>
         </div>
 
-        <div className="mt-3 flex items-center gap-2">{mainBadge}</div>
-      </div>
-
-      {/* Right: actions */}
-      <div className="md:col-span-1 flex flex-col justify-between">
-        <div>
-          {role === "customer" && (
-            <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:gap-2 gap-2">
-              {canonBookingStatus === "pending" && (
-                <button
-                  type="button"
-                  onClick={() => onCancel?.(booking?._id)}
-                  className="w-full sm:w-auto px-4 py-2 rounded-md bg-red-600 text-white text-sm hover:bg-red-700"
-                >
-                  Cancel
-                </button>
-              )}
-
-              {showPayButton && !isCancelledPayment && (
-                <button
-                  type="button"
-                  onClick={() => onPay?.(booking?._id)}
-                  className={`w-full sm:w-auto px-4 py-2 rounded-md text-white text-sm ${
-                    isThisPaying
-                      ? "bg-indigo-300 cursor-not-allowed"
-                      : "bg-indigo-600 hover:bg-indigo-700"
-                  }`}
-                  disabled={isThisPaying}
-                >
-                  {isThisPaying ? "Processing..." : "Pay"}
-                </button>
-              )}
-
-              <Link
-                to={`/bookings/${booking?._id}`}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md border text-sm font-medium text-slate-700 hover:bg-gray-100 hover:shadow-sm transition"
-              >
-                <FileText size={16} />
-                Booking Details
-              </Link>
+        {/* Middle: details */}
+        <div className="md:col-span-1 flex flex-col justify-between min-w-0">
+          <div>
+            <div className="text-lg font-semibold truncate">
+              {(car?.brand ? `${car.brand} ` : "") +
+                (car?.model || car?.title || "")}
             </div>
-          )}
+            <div className="text-sm text-slate-500 mt-1 truncate">
+              {car?.pickupLocation ? `${car.pickupLocation} • ` : ""}
+              {car?.rentalPricePerDay
+                ? `${formatCurrencyValue(car.rentalPricePerDay)}/day`
+                : ""}
+            </div>
 
-          {role === "owner" && (
-            <div className="mt-2 flex flex-col gap-2">
-              {canonBookingStatus === "pending" ? (
-                <>
+            <div className="mt-3 text-sm text-slate-700 space-y-1">
+              <div>
+                Dates:{" "}
+                <span className="font-medium">
+                  {formatDate(booking?.startDate)} — {formatDate(booking?.endDate)}
+                </span>
+              </div>
+              <div>
+                Total:{" "}
+                <span className="font-medium">
+                  {booking?.totalPrice
+                    ? formatCurrencyValue(booking.totalPrice)
+                    : "-"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center gap-2">{mainBadge}</div>
+        </div>
+
+        {/* Right: actions */}
+        <div className="md:col-span-1 flex flex-col justify-between">
+          <div>
+            {role === "customer" && (
+              <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:gap-2 gap-2">
+                {canonBookingStatus === "pending" && (
                   <button
                     type="button"
-                    onClick={() => onApprove?.(booking?._id)}
-                    className={`w-full px-4 py-2 rounded-md text-white text-sm ${
-                      ownerIsResponding
-                        ? "bg-green-300 cursor-not-allowed"
-                        : "bg-green-600 hover:bg-green-700"
-                    }`}
-                    disabled={ownerIsResponding}
+                    onClick={() => {
+                      setCancelError(null);
+                      setConfirmCancelOpen(true);
+                    }}
+                    className="w-full sm:w-auto px-4 py-2 rounded-md bg-red-600 text-white text-sm hover:bg-red-700"
+                    disabled={cancelling}
                   >
-                    {ownerIsResponding ? "Processing..." : "Accept"}
+                    Cancel
                   </button>
+                )}
+
+                {showPayButton && !isCancelledPayment && (
                   <button
                     type="button"
-                    onClick={() => onReject?.(booking?._id)}
-                    className={`w-full px-4 py-2 rounded-md text-white text-sm ${
-                      ownerIsResponding
-                        ? "bg-red-300 cursor-not-allowed"
-                        : "bg-red-600 hover:bg-red-700"
+                    onClick={() => onPay?.(booking?._id)}
+                    className={`w-full sm:w-auto px-4 py-2 rounded-md text-white text-sm ${
+                      isThisPaying
+                        ? "bg-indigo-300 cursor-not-allowed"
+                        : "bg-indigo-600 hover:bg-indigo-700"
                     }`}
-                    disabled={ownerIsResponding}
+                    disabled={isThisPaying}
                   >
-                    {ownerIsResponding ? "Processing..." : "Reject"}
+                    {isThisPaying ? "Processing..." : "Pay"}
                   </button>
-                </>
-              ) : (
+                )}
+
                 <Link
                   to={`/bookings/${booking?._id}`}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md border text-sm font-medium text-slate-700 hover:bg-gray-100 hover:shadow-sm transition"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md border text-sm font-medium text-slate-700 hover:bg-gray-100 hover:shadow-sm transition"
                 >
                   <FileText size={16} />
                   Booking Details
                 </Link>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          {role === "admin" && (
-            <div className="mt-2">
-              <Link
-                to={`/bookings/${booking?._id}`}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md border text-sm font-medium text-slate-700 hover:bg-gray-100 hover:shadow-sm transition"
-              >
-                <FileText size={16} />
-                Booking Details
-              </Link>
-            </div>
-          )}
-        </div>
+            {role === "owner" && (
+              <div className="mt-2 flex flex-col gap-2">
+                {canonBookingStatus === "pending" ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => onApprove?.(booking?._id)}
+                      className={`w-full px-4 py-2 rounded-md text-white text-sm ${
+                        ownerIsResponding
+                          ? "bg-green-300 cursor-not-allowed"
+                          : "bg-green-600 hover:bg-green-700"
+                      }`}
+                      disabled={ownerIsResponding}
+                    >
+                      {ownerIsResponding ? "Processing..." : "Accept"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onReject?.(booking?._id)}
+                      className={`w-full px-4 py-2 rounded-md text-white text-sm ${
+                        ownerIsResponding
+                          ? "bg-red-300 cursor-not-allowed"
+                          : "bg-red-600 hover:bg-red-700"
+                      }`}
+                      disabled={ownerIsResponding}
+                    >
+                      {ownerIsResponding ? "Processing..." : "Reject"}
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    to={`/bookings/${booking?._id}`}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md border text-sm font-medium text-slate-700 hover:bg-gray-100 hover:shadow-sm transition"
+                  >
+                    <FileText size={16} />
+                    Booking Details
+                  </Link>
+                )}
+              </div>
+            )}
 
-        <div className="mt-3 text-xs text-slate-500">
-          {role === "owner"
-            ? `Customer: ${customer?.name || customer?.email || "-"}`
-            : `Owner: ${owner?.name || owner?.email || "-"}`}
+            {role === "admin" && (
+              <div className="mt-2">
+                <Link
+                  to={`/bookings/${booking?._id}`}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md border text-sm font-medium text-slate-700 hover:bg-gray-100 hover:shadow-sm transition"
+                >
+                  <FileText size={16} />
+                  Booking Details
+                </Link>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-3 text-xs text-slate-500">
+            {role === "owner"
+              ? `Customer: ${customer?.name || customer?.email || "-"}`
+              : `Owner: ${owner?.name || owner?.email || "-"}`}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Confirm Cancel Modal */}
+      <Modal
+        isOpen={confirmCancelOpen}
+        onClose={() => {
+          if (!cancelling) {
+            setConfirmCancelOpen(false);
+            setCancelError(null);
+            setCancelSuccess(false);
+          }
+        }}
+        title="Cancel booking"
+      >
+        <div className="space-y-3">
+          {cancelSuccess ? (
+            <div className="flex items-center gap-3 text-green-700">
+              <CheckCircle size={18} />
+              <div>
+                <div className="font-semibold">Cancelled</div>
+                <div className="text-sm">Booking cancelled successfully.</div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p>Are you sure you want to cancel this booking?</p>
+
+              {cancelError && (
+                <div className="text-sm text-rose-600">{cancelError}</div>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    if (!cancelling) {
+                      setConfirmCancelOpen(false);
+                      setCancelError(null);
+                    }
+                  }}
+                  className="px-4 py-2 border rounded"
+                  disabled={cancelling}
+                >
+                  No
+                </button>
+                <button
+                  onClick={handleConfirmCancel}
+                  className="px-4 py-2 bg-red-600 text-white rounded flex items-center gap-2"
+                  disabled={cancelling}
+                >
+                  {cancelling ? "Cancelling..." : "Yes, Cancel"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
+    </>
   );
 }

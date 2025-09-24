@@ -109,7 +109,7 @@ export default function Navbar() {
                 boxShadow: "0 8px 30px rgba(99,102,241,0.12)",
               }}
             >
-              <Car size={18} color="white" />
+              <Car size={25} color="white" />
             </motion.div>
 
             <div className="flex flex-col leading-tight">

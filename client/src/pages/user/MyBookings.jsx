@@ -1,8 +1,7 @@
-
-import React from "react";
+// src/pages/user/MyBookings.jsx
+import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
-import {useState,useEffect,useRef} from "react";
 import {
   fetchCustomerBookings,
   fetchBookingById,
@@ -37,6 +36,7 @@ export default function MyBookings() {
     dispatch(fetchCustomerBookings());
   }, [dispatch]);
 
+  // Handle return from checkout
   useEffect(() => {
     try {
       if (handledLocationStateRef.current) return;
@@ -50,17 +50,17 @@ export default function MyBookings() {
 
         (async () => {
           try {
-            //  refresh the single booking
             await dispatch(fetchBookingById(bookingId)).unwrap?.();
-
-            //  refresh the bookings list
             await dispatch(fetchCustomerBookings()).unwrap?.();
           } catch (e) {
             try {
               await dispatch(fetchCustomerBookings()).unwrap?.();
             } catch (e2) {
-              
-              console.warn("MyBookings: failed to refresh bookings after checkout", e, e2);
+              console.warn(
+                "MyBookings: failed to refresh bookings after checkout",
+                e,
+                e2
+              );
             }
           } finally {
             try {
@@ -76,8 +76,8 @@ export default function MyBookings() {
     }
   }, [location, dispatch, navigate]);
 
+  // ❌ Removed window.confirm
   const handleCancel = async (id) => {
-    if (!window.confirm("Cancel this booking?")) return;
     const res = await dispatch(cancelBookingRequest(id));
     if (res.meta.requestStatus === "fulfilled") {
       dispatch(fetchCustomerBookings());

@@ -60,7 +60,7 @@ export default function App() {
   return (
     <div className="min-h-screen">
       <Navbar />
-      <main className="max-w-6xl mx-auto p-4">
+      <main className="mx-auto px-3 py-3 sm:px-6 sm:py-4 sm:max-w-6xl">
         <Routes>
           {/* Public / Common */}
           <Route path="/" element={<Home />} />

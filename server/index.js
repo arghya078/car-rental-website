@@ -53,13 +53,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-const clientUrl = process.env.CLIENT_URL || true;
 app.use(
   cors({
-    origin: clientUrl,
+    origin: true,  
     credentials: true,
   })
 );
+
 
 app.use(helmet());
 app.use(morgan("dev"));
@@ -84,10 +84,9 @@ app.use(notFound);
 app.use(errorHandler);
 
 // server
-const PORT = process.env.PORT || 5000;
+const PORT = 8000;
 const server = app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
-  console.log(`Client allowed origin: ${clientUrl}`);
   if (process.env.PAYPAL_MODE) {
     console.log(`PayPal mode: ${process.env.PAYPAL_MODE}`);
   }

@@ -1,4 +1,3 @@
-
 const mongoose = require("mongoose");
 const Booking = require("../models/Booking");
 const Car = require("../models/Car");
@@ -11,13 +10,28 @@ const CAR_POP_FIELDS =
   "brand model year type seatingCapacity images rentalPricePerDay pickupLocation description isAvailable";
 const USER_POP_FIELDS = "name email phone address profilePic role";
 
-/**
- * Create booking request (customer)
- * Returns a populated booking (car, owner, customer) so client has full detail immediately.
- *
- * NOTE: booking.currency is set to 'usd' so PayPal flows know which currency to use.
- * If your car.rentalPricePerDay is stored in a different currency, convert to USD before creating payments.
- */
+
+function normalizeDateToLocalMidnight(dateStr) {
+  if (!dateStr) return null;
+  try {
+    const s = String(dateStr).trim();
+    // YYYY-MM-DD pattern
+    const dateOnlyMatch = /^\d{4}-\d{2}-\d{2}$/.test(s);
+    if (dateOnlyMatch) {
+      const [y, m, d] = s.split("-").map(Number);
+      // new Date(year, monthIndex, day, 0, 0, 0, 0) => local midnight
+      const dt = new Date(y, m - 1, d, 0, 0, 0, 0);
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+    // fallback parse (handles ISO datetimes)
+    const parsed = new Date(s);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  } catch (err) {
+    return null;
+  }
+}
+
+//  Create a new booking
 exports.createBookingRequest = async (req, res) => {
   try {
     const { carId, startDate, endDate } = req.body;
@@ -28,19 +42,21 @@ exports.createBookingRequest = async (req, res) => {
     const car = await Car.findById(carId).populate("owner");
     if (!car) return res.status(404).json({ message: "Car not found" });
 
-    // Normalize dates
-    const s = new Date(startDate);
-    const e = new Date(endDate);
-    if (isNaN(s) || isNaN(e) || s >= e) {
+    // Normalize dates to local-midnight Dates
+    const s = normalizeDateToLocalMidnight(startDate);
+    const e = normalizeDateToLocalMidnight(endDate);
+
+    if (!s || !e || isNaN(s.getTime()) || isNaN(e.getTime()) || s >= e) {
       // strict: require end date to be AFTER start date
       return res.status(400).json({ message: "Invalid date range — endDate must be after startDate" });
     }
 
     // check overlapping booking (Pending / Approved / Paid)
+    // Note: store uses Date type; s and e are Date objects at local midnight -> safe to compare
     const existingBooking = await Booking.findOne({
       car: carId,
-      status: { $in: ["Pending", "Approved", "Paid"] },
-      $or: [{ startDate: { $lte: e }, endDate: { $gte: s } }],
+      status: { $in: ["Pending", "Approved", "Paid", "pending", "requested", "Requested"] },
+      $or: [{ startDate: { $lte: e } }, { endDate: { $gte: s } }, { $and: [{ startDate: { $gte: s } }, { endDate: { $lte: e } }] }],
     });
 
     if (existingBooking) {
@@ -98,11 +114,7 @@ exports.createBookingRequest = async (req, res) => {
   }
 };
 
-/**
- * GET /bookings/:id
- * Return a fully populated booking (car, owner, customer) and payment status.
- * This is the canonical detail endpoint the frontend should call.
- */
+// Get booking by id
 exports.getBookingById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -133,10 +145,7 @@ exports.getBookingById = async (req, res) => {
   }
 };
 
-/**
- * Owner: Return ONLY pending booking requests for the owner
- * Route: GET /bookings/owner/requests
- */
+// Get all requests for owner
 exports.getOwnerRequests = async (req, res) => {
   try {
     const ownerId = req.user && req.user._id;
@@ -157,10 +166,7 @@ exports.getOwnerRequests = async (req, res) => {
   }
 };
 
-/**
- * Owner: fetch all bookings for owner (no status filter) — used by "All bookings (payment status)" view
- * Route: GET /bookings/owner/all
- */
+// Get all requests for owner with payments
 exports.getOwnerBookingsWithPayments = async (req, res) => {
   try {
     const ownerId = req.user && req.user._id;
@@ -193,10 +199,7 @@ exports.getOwnerBookingsWithPayments = async (req, res) => {
   }
 };
 
-/**
- * Owner: (backward-compatible) return owner bookings (all statuses)
- * kept as alias for older clients that call /owner
- */
+// Get all bookings for owner
 exports.getOwnerBookings = async (req, res) => {
   try {
     const ownerId = req.user && req.user._id;
@@ -215,9 +218,7 @@ exports.getOwnerBookings = async (req, res) => {
   }
 };
 
-/**
- * Respond to booking (approve/reject) - made atomic and safe
- */
+// Respond to a booking
 exports.respondToBooking = async (req, res) => {
   try {
     const bookingId = req.params.bookingId || req.params.id || req.params._id;
@@ -299,9 +300,7 @@ exports.respondToBooking = async (req, res) => {
   }
 };
 
-/**
- * Customer proceed to payment (only allowed after approval)
- */
+// Proceed to payment
 exports.proceedToPayment = async (req, res) => {
   try {
     const bookingId = req.params.bookingId || req.params.id;
@@ -330,9 +329,7 @@ exports.proceedToPayment = async (req, res) => {
   }
 };
 
-/**
- * Customer cancels booking request (before approval)
- */
+// Cancel booking
 exports.cancelBookingRequest = async (req, res) => {
   try {
     const bookingId = req.params.bookingId || req.params.id;
@@ -380,9 +377,7 @@ exports.cancelBookingRequest = async (req, res) => {
   }
 };
 
-/**
- * Customer: View all bookings with payment status
- */
+// Get all bookings for customer
 exports.getCustomerBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({ customer: req.user._id })
@@ -411,9 +406,7 @@ exports.getCustomerBookings = async (req, res) => {
   }
 };
 
-/**
- * Admin: View all bookings with customer + owner + payment status
- */
+// Get all bookings for admin
 exports.getAllBookingsForAdmin = async (req, res) => {
   try {
     const bookings = await Booking.find()

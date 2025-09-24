@@ -26,14 +26,16 @@ function normalizeUploadResult(res) {
 
 async function _doUpload(filePath, opts = {}) {
   const res = await cloudinaryLib.uploader.upload(filePath, opts);
-  // remove local file only
+
+  // ALWAYS remove local file after successful upload (if it exists)
   try {
-    if (opts && opts.removeLocal && filePath && fs.existsSync(filePath)) {
+    if (filePath && fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
   } catch (e) {
     console.warn("Failed to remove local file after upload:", e?.message || e);
   }
+
   return normalizeUploadResult(res);
 }
 

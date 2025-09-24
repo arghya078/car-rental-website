@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Link } from "react-router-dom";
-import { Mail, Phone, MapPin, Twitter, Instagram, Facebook, Globe, ShieldCheck } from "lucide-react";
+import { Mail, Phone, MapPin, Twitter, Instagram, Facebook, Car, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function Footer() {
@@ -34,7 +34,7 @@ export default function Footer() {
                   className="w-12 h-12 rounded-lg flex items-center justify-center"
                   style={{ background: "linear-gradient(135deg,#7c3aed,#06b6d4)", boxShadow: "0 8px 30px rgba(99,102,241,0.12)" }}
                 >
-                  <Globe color="#fff" />
+                  <Car size={28} color="white"  />
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-white">CarRental</h2>
