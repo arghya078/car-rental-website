@@ -35,7 +35,6 @@ export default function Login() {
 
   return (
     <div className="max-w-md mx-auto mt-8">
-      <h2 className="text-xl font-semibold mb-4">Sign in</h2>
       <LoginForm onSubmit={handleLogin} />
     </div>
   );
