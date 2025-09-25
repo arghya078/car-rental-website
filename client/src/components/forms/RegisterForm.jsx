@@ -1,6 +1,6 @@
-
 import React from "react";
 import PropTypes from "prop-types";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -208,9 +208,19 @@ export default function RegisterForm({ onSubmit, loading = false, serverError = 
         </motion.button>
       </div>
 
+      {/* Sign-in prompt */}
+      <div className="text-center">
+        <p className="text-sm text-slate-600">
+          Already have an account?{' '}
+          <Link to="/signin" className="font-medium text-indigo-600 hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </div>
+
       <div className="text-center text-xs text-slate-500">
-        By creating an account you agree to our{" "}
-        <a className="text-indigo-600 hover:underline" href="/terms">Terms</a> and{" "}
+        By creating an account you agree to our{' '}
+        <a className="text-indigo-600 hover:underline" href="/terms">Terms</a> and{' '}
         <a className="text-indigo-600 hover:underline" href="/privacy">Privacy Policy</a>.
       </div>
     </motion.form>
